@@ -173,7 +173,22 @@ namespace SQLitePCL
                 }
             }
         }
+
+        /// <summary>
+        /// Gets the <see cref="Encoding.UTF8"/> encoded bytes for the provided <paramref name="value"/>.  The array
+        /// will include a trailing <c>\0</c> character.  The length of the array will <see cref="Encoding.UTF8"/>'s
+        /// <see cref="Encoding.GetByteCount(string)"/><c>+1</c> (for the trailing <c>\0</c> byte).  These bytes are
+        /// suitable to use with <see cref="FromSpan(ReadOnlySpan{byte})"/> using the extension <see
+        /// cref="MemoryExtensions.AsSpan{T}(T[])"/> or <see cref="FromPtr(byte*)"/> or <see cref="FromPtrLen(byte*,
+        /// int)"/>.  Note that for <see cref="FromPtrLen(byte*, int)"/> the length provided should not include the
+        /// trailing <c>\0</c> terminator.
+        /// </summary>
+        /// <remarks>
+        /// If <paramref name="value"/> is <see langword="null"/> this will return <see langword="null"/>.
+        /// </remarks>
+        public static byte[] GetUTF8BytesWithTrailingZero(string value)
+        {
+            return util.to_utf8_with_z(value);
+        }
     }
-
 }
-
