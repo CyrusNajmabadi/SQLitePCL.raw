@@ -1125,26 +1125,36 @@ namespace SQLitePCL
 
         static public int sqlite3_bind_text(sqlite3_stmt stmt, int index, string val)
         {
+            const int OptimizedLengthThreshold = 2048;
+
             if (val != null)
             {
                 // stackalloc the conversion to bytes for small strings to help avoid unnecessary GC
                 // pressure. This is ultimately safe as we pass the SQLITE_TRANSIENT
                 // (https://www.sqlite.org/c3ref/c_static.html) flag to sqlite, which causes them to
                 // create their own copy.
-                var utf8ByteCount = Encoding.UTF8.GetByteCount(val);
-                if (utf8ByteCount <= 512)
-                {
-                    Span<byte> bytes = stackalloc byte[utf8ByteCount];
-                    unsafe
-                    {
-                        fixed (char* charsPtr = val)
-                        fixed (byte* bytesPtr = bytes)
-                        {
-                            Encoding.UTF8.GetBytes(charsPtr, val.Length, bytesPtr, utf8ByteCount);
-                        }
-                    }
 
-                    return sqlite3_bind_text(stmt, index, bytes);
+                // Only do this for short strings anyways.  If the string has more characters than this threshold, then
+                // it will certainly have more bytes than this threshold.
+                if (val.Length <= OptimizedLengthThreshold)
+                {
+                    // Now see if the utf8 encoded versions is also within the threshold.  As almost all of our strings
+                    // are ascii, this will be true for nearly all of them.
+                    var utf8ByteCount = Encoding.UTF8.GetByteCount(val);
+                    if (utf8ByteCount <= OptimizedLengthThreshold)
+                    {
+                        Span<byte> bytes = stackalloc byte[utf8ByteCount];
+                        unsafe
+                        {
+                            fixed (char* charsPtr = val)
+                            fixed (byte* bytesPtr = bytes)
+                            {
+                                Encoding.UTF8.GetBytes(charsPtr, val.Length, bytesPtr, utf8ByteCount);
+                            }
+                        }
+
+                        return sqlite3_bind_text(stmt, index, bytes);
+                    }
                 }
             }
 
